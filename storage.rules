@@ -1,0 +1,87 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function settingsPath() {
+      return /databases/(default)/documents/settings/global;
+    }
+
+    function hasSettings() {
+      return firestore.exists(settingsPath());
+    }
+
+    function settingsDoc() {
+      return firestore.get(settingsPath());
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function requestEmail() {
+      return signedIn() && request.auth.token.email is string
+        ? request.auth.token.email
+        : null;
+    }
+
+    function requestEmailLower() {
+      return requestEmail() == null
+        ? null
+        : requestEmail().lower();
+    }
+
+    function requesterEmailUserPath() {
+      return /databases/(default)/documents/users/$(requestEmailLower());
+    }
+
+    function requesterUidUserPath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
+    }
+
+    function hasRequesterEmailUser() {
+      return signedIn()
+        && requestEmailLower() != null
+        && firestore.exists(requesterEmailUserPath());
+    }
+
+    function hasRequesterUidUser() {
+      return signedIn()
+        && firestore.exists(requesterUidUserPath());
+    }
+
+    function adminEmailList() {
+      return hasSettings() && settingsDoc().data.adminEmails is list
+        ? settingsDoc().data.adminEmails
+        : [];
+    }
+
+    function isApprovedUser() {
+      return signedIn()
+        && (
+          (
+            hasRequesterEmailUser()
+            && firestore.get(requesterEmailUserPath()).data.isApproved == true
+          )
+          || (
+            hasRequesterUidUser()
+            && firestore.get(requesterUidUserPath()).data.isApproved == true
+          )
+        );
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && hasSettings()
+        && requestEmailLower() != null
+        && adminEmailList().hasAny([requestEmailLower()]);
+    }
+
+    function hasVotingAccess() {
+      return isAdmin() || isApprovedUser();
+    }
+
+    match /designs/{allPaths=**} {
+      allow read: if hasVotingAccess();
+      allow write: if isAdmin();
+    }
+  }
+}

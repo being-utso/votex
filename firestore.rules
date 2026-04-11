@@ -1,0 +1,271 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function settingsPath() {
+      return /databases/$(database)/documents/settings/global;
+    }
+
+    function hasSettings() {
+      return exists(settingsPath());
+    }
+
+    function settingsDoc() {
+      return get(settingsPath());
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function requestEmail() {
+      return signedIn() && request.auth.token.email is string
+        ? request.auth.token.email
+        : null;
+    }
+
+    function requestEmailLower() {
+      return requestEmail() == null
+        ? null
+        : requestEmail().lower();
+    }
+
+    function requesterEmailUserPath() {
+      return /databases/$(database)/documents/users/$(requestEmailLower());
+    }
+
+    function requesterUidUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasRequesterEmailUser() {
+      return signedIn()
+        && requestEmailLower() != null
+        && exists(requesterEmailUserPath());
+    }
+
+    function hasRequesterUidUser() {
+      return signedIn()
+        && exists(requesterUidUserPath());
+    }
+
+    function adminEmailList() {
+      return hasSettings() && settingsDoc().data.adminEmails is list
+        ? settingsDoc().data.adminEmails
+        : [];
+    }
+
+    function isApprovedUser() {
+      return signedIn()
+        && (
+          (
+            hasRequesterEmailUser()
+            && get(requesterEmailUserPath()).data.isApproved == true
+          )
+          || (
+            hasRequesterUidUser()
+            && get(requesterUidUserPath()).data.isApproved == true
+          )
+        );
+    }
+
+    function hasVotingAccess() {
+      return isAdmin() || isApprovedUser();
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && hasSettings()
+        && requestEmailLower() != null
+        && adminEmailList().hasAny([requestEmailLower()]);
+    }
+
+    function canViewPublicResults() {
+      return hasSettings()
+        && (
+          settingsDoc().data.showResults == true
+          || settingsDoc().data.resultsPublished == true
+        );
+    }
+
+    function isVoteOwner() {
+      return signedIn()
+        && resource != null
+        && (
+          resource.data.userId == request.auth.uid
+          || resource.data.uid == request.auth.uid
+        );
+    }
+
+    function canCheckOwnVoteDoc(voteId) {
+      return signedIn()
+        && voteId.matches("^round_[0-9]+_" + request.auth.uid + "_.*$");
+    }
+
+    function userPath(userId) {
+      return /databases/$(database)/documents/users/$(userId);
+    }
+
+    function hasUser(userId) {
+      return exists(userPath(userId));
+    }
+
+    function userDoc(userId) {
+      return get(userPath(userId));
+    }
+
+    function currentRoundKey() {
+      return "round_" + string(settingsDoc().data.currentRound);
+    }
+
+    function hasSubmittedCurrentRound(userId) {
+      return hasUser(userId)
+        && userDoc(userId).data.submittedRounds is map
+        && userDoc(userId).data.submittedRounds[currentRoundKey()] == true;
+    }
+
+    function requesterHasSubmittedCurrentRound() {
+      return signedIn()
+        && (
+          hasSubmittedCurrentRound(request.auth.uid)
+          || (
+            requestEmailLower() != null
+            && hasSubmittedCurrentRound(requestEmailLower())
+          )
+        );
+    }
+
+    match /settings/global {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn()
+        && (
+          isAdmin()
+          || request.auth.uid == userId
+          || (
+            requestEmailLower() != null
+            && requestEmailLower() == userId
+          )
+          || (
+            requestEmailLower() != null
+            && resource.data.email is string
+            && resource.data.email.lower() == requestEmailLower()
+          )
+        );
+      allow create: if signedIn()
+        && requestEmailLower() != null
+        && request.resource.data.email is string
+        && request.resource.data.email.lower() == requestEmailLower()
+        && request.resource.data.uid == request.auth.uid
+        && (
+          request.auth.uid == userId
+          || requestEmailLower() == userId
+        );
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && requestEmailLower() != null
+          && resource.data.email is string
+          && request.resource.data.email is string
+          && resource.data.email.lower() == requestEmailLower()
+          && request.resource.data.email.lower() == resource.data.email.lower()
+        );
+      allow delete: if isAdmin();
+    }
+
+    match /designs/{designId} {
+      allow read: if hasVotingAccess();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /votes/{voteId} {
+      allow read: if isAdmin()
+        || (
+          hasVotingAccess()
+          && (
+            isVoteOwner()
+            || (
+              resource == null
+              && canCheckOwnVoteDoc(voteId)
+            )
+          )
+        );
+      allow create: if hasVotingAccess()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userName is string
+        && request.resource.data.userName.size() > 0
+        && request.resource.data.designId is string
+        && request.resource.data.round is int
+        && request.resource.data.isSubmitted == false
+        && hasSettings()
+        && settingsDoc().data.votingOpen == true
+        && request.resource.data.round == settingsDoc().data.currentRound
+        && !requesterHasSubmittedCurrentRound()
+        && voteId == "round_" + string(request.resource.data.round) + "_" + request.auth.uid + "_" + request.resource.data.designId;
+      allow delete: if isAdmin()
+        || (
+          hasVotingAccess()
+          && (
+            resource.data.userId == request.auth.uid
+            || resource.data.uid == request.auth.uid
+          )
+          && hasSettings()
+          && settingsDoc().data.votingOpen == true
+          && !requesterHasSubmittedCurrentRound()
+          && resource.data.isSubmitted != true
+          && (
+            resource.data.round == settingsDoc().data.currentRound
+            || resource.data.roundNumber == settingsDoc().data.currentRound
+          )
+        );
+      allow update: if isAdmin()
+        || (
+          hasVotingAccess()
+          && (
+            resource.data.userId == request.auth.uid
+            || resource.data.uid == request.auth.uid
+          )
+          && hasSettings()
+          && settingsDoc().data.votingOpen == true
+          && !requesterHasSubmittedCurrentRound()
+          && request.resource.data.designId == resource.data.designId
+          && (
+            request.resource.data.userId == resource.data.userId
+            || (
+              resource.data.userId == null
+              && request.resource.data.userId == request.auth.uid
+            )
+          )
+          && (
+            request.resource.data.round == resource.data.round
+            || (
+              resource.data.round == null
+              && request.resource.data.round == settingsDoc().data.currentRound
+            )
+          )
+          && request.resource.data.userName is string
+          && request.resource.data.userName.size() > 0
+          && request.resource.data.isSubmitted == true
+          && resource.data.isSubmitted != true
+          && request.resource.data.createdAt == resource.data.createdAt
+        );
+    }
+
+    match /voteTotals/{totalId} {
+      allow read: if hasVotingAccess() && (isAdmin() || canViewPublicResults());
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /comments/{commentId} {
+      allow read: if hasVotingAccess();
+      allow create: if hasVotingAccess()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 500;
+      allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == resource.data.uid);
+    }
+  }
+}

@@ -1,0 +1,252 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --motion-duration: 240ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  @apply border-line;
+}
+
+body {
+  @apply m-0 min-h-screen bg-page font-body text-textMain antialiased leading-relaxed;
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.1), transparent 30%),
+    radial-gradient(circle at 90% 0%, rgba(34, 211, 238, 0.08), transparent 35%),
+    linear-gradient(180deg, #090b12 0%, #090d16 100%);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-display leading-tight tracking-tight;
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-screen;
+  }
+
+  .app-container {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .app-main {
+    @apply app-container py-6 sm:py-8 lg:py-10;
+  }
+
+  .app-screen {
+    @apply relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8;
+  }
+
+  .layout-stack {
+    @apply space-y-8;
+  }
+
+  .panel-surface {
+    @apply rounded-2xl border border-white/10 bg-white/5 p-5 shadow-card backdrop-blur-xl sm:p-6;
+  }
+
+  .panel-surface-compact {
+    @apply rounded-2xl border border-white/10 bg-white/5 p-4 shadow-card backdrop-blur-xl sm:p-5;
+  }
+
+  .content-grid {
+    @apply grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4;
+    grid-auto-rows: 1fr;
+  }
+
+  .content-grid > * {
+    @apply h-full;
+  }
+
+  .design-card-surface {
+    @apply rounded-2xl border backdrop-blur-xl;
+    border-color: rgba(255, 255, 255, 0.14);
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.04));
+    box-shadow: 0 18px 36px rgba(2, 6, 23, 0.34);
+    transition:
+      border-color var(--motion-duration) var(--motion-ease),
+      box-shadow var(--motion-duration) var(--motion-ease),
+      background var(--motion-duration) var(--motion-ease);
+  }
+
+  .design-card-surface:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.045));
+    box-shadow: 0 24px 48px rgba(2, 6, 23, 0.44);
+  }
+
+  .btn-base {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/55;
+    transition-duration: var(--motion-duration);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  .btn-base:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
+  .btn-base:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .btn-accent {
+    @apply btn-base border text-white;
+    border-color: rgba(125, 211, 252, 0.45);
+    background-image: linear-gradient(
+      135deg,
+      rgba(56, 189, 248, 0.48),
+      rgba(14, 165, 233, 0.34) 52%,
+      rgba(37, 99, 235, 0.34)
+    );
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.42);
+  }
+
+  .btn-accent:not(:disabled):hover {
+    @apply -translate-y-0.5;
+    border-color: rgba(125, 211, 252, 0.62);
+    background-image: linear-gradient(
+      135deg,
+      rgba(56, 189, 248, 0.58),
+      rgba(14, 165, 233, 0.42) 52%,
+      rgba(37, 99, 235, 0.42)
+    );
+    box-shadow: 0 16px 34px rgba(14, 116, 144, 0.32);
+  }
+
+  .btn-accent[aria-pressed="true"],
+  .btn-accent.is-active {
+    border-color: rgba(110, 231, 183, 0.65);
+    background-image: linear-gradient(
+      135deg,
+      rgba(52, 211, 153, 0.52),
+      rgba(16, 185, 129, 0.4) 52%,
+      rgba(14, 165, 233, 0.34)
+    );
+    box-shadow: inset 0 0 0 1px rgba(134, 239, 172, 0.35), 0 14px 30px rgba(5, 46, 22, 0.3);
+  }
+
+  .btn-ghost {
+    @apply btn-base border border-white/20 bg-white/5 text-slate-100;
+    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.26);
+  }
+
+  .btn-ghost:not(:disabled):hover {
+    @apply -translate-y-0.5 bg-white/10;
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.35);
+  }
+
+  .btn-muted {
+    @apply btn-base border border-white/15 bg-white/5 text-slate-400;
+  }
+
+  .btn-success {
+    @apply btn-base border text-emerald-100;
+    border-color: rgba(74, 222, 128, 0.5);
+    background-image: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.34),
+      rgba(5, 150, 105, 0.3) 55%,
+      rgba(6, 182, 212, 0.24)
+    );
+    box-shadow: 0 12px 24px rgba(5, 46, 22, 0.28);
+  }
+
+  .btn-success:not(:disabled):hover {
+    @apply -translate-y-0.5;
+    border-color: rgba(74, 222, 128, 0.68);
+  }
+
+  .btn-icon {
+    @apply btn-base h-9 w-9 rounded-lg p-0;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .active-glow {
+    box-shadow:
+      0 0 0 1px rgba(56, 189, 248, 0.24),
+      0 0 16px rgba(34, 211, 238, 0.16),
+      0 12px 28px rgba(2, 6, 23, 0.34);
+  }
+
+  .section-divider {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(
+      90deg,
+      rgba(148, 163, 184, 0),
+      rgba(148, 163, 184, 0.24),
+      rgba(148, 163, 184, 0)
+    );
+  }
+}
+
+#root {
+  @apply min-h-screen;
+}
+
+.glass-card {
+  @apply border border-white/10 bg-white/5 shadow-card backdrop-blur-xl;
+}
+
+.glass-panel {
+  @apply border border-white/10 bg-slate-900/65 backdrop-blur-lg;
+}
+
+.subtle-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.subtle-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.subtle-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+}
+
+.subtle-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
