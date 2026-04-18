@@ -23,6 +23,12 @@ const normalizeSettings = (data = {}) => {
     typeof data.showResults === "boolean"
       ? data.showResults
       : Boolean(data.resultsPublished);
+  const rawMaxVotes = data.maxVotes ?? data.maxVotesPerUser ?? DEFAULT_SETTINGS.maxVotes;
+  const numericMaxVotes = Number(rawMaxVotes);
+  const normalizedMaxVotes =
+    Number.isFinite(numericMaxVotes) && numericMaxVotes >= 0
+      ? Math.floor(numericMaxVotes)
+      : DEFAULT_SETTINGS.maxVotes;
 
   const adminRaw =
     hasAdminEmails && Array.isArray(data.adminEmails)
@@ -34,7 +40,9 @@ const normalizeSettings = (data = {}) => {
     ...data,
     showResults,
     resultsPublished: showResults,
-    adminEmails: normalizeEmails(adminRaw)
+    adminEmails: normalizeEmails(adminRaw),
+    maxVotes: normalizedMaxVotes,
+    maxVotesPerUser: normalizedMaxVotes
   };
 };
 
@@ -92,6 +100,18 @@ export function SettingsProvider({ children }) {
 
     if ("resultsPublished" in partialSettings && !("showResults" in partialSettings)) {
       payload.showResults = Boolean(partialSettings.resultsPublished);
+    }
+
+    if ("maxVotes" in partialSettings || "maxVotesPerUser" in partialSettings) {
+      const rawMaxVotes = partialSettings.maxVotes ?? partialSettings.maxVotesPerUser;
+      const numericMaxVotes = Number(rawMaxVotes);
+      const normalizedMaxVotes =
+        Number.isFinite(numericMaxVotes) && numericMaxVotes >= 0
+          ? Math.floor(numericMaxVotes)
+          : DEFAULT_SETTINGS.maxVotes;
+
+      payload.maxVotes = normalizedMaxVotes;
+      payload.maxVotesPerUser = normalizedMaxVotes;
     }
 
     await setDoc(settingsRef, payload, { merge: true });

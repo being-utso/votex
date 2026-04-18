@@ -75,7 +75,7 @@ export async function toggleVote({
   designId,
   roundNumber,
   roundKey,
-  maxVotesPerUser
+  maxVotes
 }) {
   const userId = user?.uid;
   const userEmail = getUserDocIdFromEmail(user?.email);
@@ -120,7 +120,7 @@ export async function toggleVote({
     const votedDesignIdsByRound = userData.votedDesignIdsByRound ?? {};
     const submittedRounds = userData.submittedRounds ?? {};
     const currentUsedVotes = Number(votesUsedByRound[activeRoundKey] || 0);
-    const voteLimit = Number(settings.maxVotesPerUser ?? maxVotesPerUser ?? 0);
+    const voteLimit = Number(settings.maxVotes ?? settings.maxVotesPerUser ?? maxVotes ?? 3);
     const votedDesignIds = Array.isArray(votedDesignIdsByRound[activeRoundKey])
       ? votedDesignIdsByRound[activeRoundKey]
       : [];
@@ -188,7 +188,7 @@ export async function submitVotes({
   user,
   roundNumber,
   roundKey,
-  maxVotesPerUser
+  maxVotes
 }) {
   const userId = user?.uid;
   const userEmail = getUserDocIdFromEmail(user?.email);
@@ -258,7 +258,7 @@ export async function submitVotes({
     )
   );
   const usedVotes = votedDesignIds.length;
-  const voteLimit = Number(settings.maxVotesPerUser ?? maxVotesPerUser ?? 0);
+  const voteLimit = Number(settings.maxVotes ?? settings.maxVotesPerUser ?? maxVotes ?? 3);
 
   if (voteLimit > 0 && usedVotes > voteLimit) {
     throw new Error("Selected votes exceed the allowed limit.");

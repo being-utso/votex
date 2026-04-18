@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, Sparkles } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import logo from "../img/logo.png";
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden="true">
@@ -55,11 +56,11 @@ export default function AuthScreen({ error }) {
       >
         <div className="mb-8 flex items-center gap-3">
           <div className="rounded-xl border border-accent/50 bg-accent/20 p-2 text-accent">
-            <Sparkles className="h-5 w-5" />
+            <img src={logo} alt="logo" className="h-7 w-auto" />
           </div>
           <div>
             <p className="font-display text-lg font-semibold tracking-tight text-white">
-              Cover Design Voting
+              Votex
             </p>
             <p className="text-xs text-textMuted">Secure panel for curated design decisions</p>
           </div>

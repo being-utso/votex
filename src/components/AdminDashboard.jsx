@@ -35,6 +35,7 @@ export default function AdminDashboard({
   onRetryUsers,
   onUploadDesign,
   onToggleResults,
+  onUpdateVoteLimit,
   onResetAllVotes,
   onReopenVoting,
   onDeleteDesign,
@@ -58,6 +59,9 @@ export default function AdminDashboard({
   const [votesLoading, setVotesLoading] = useState(false);
   const [votesError, setVotesError] = useState(null);
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [maxVotesInput, setMaxVotesInput] = useState(
+    String(Number(settings.maxVotes ?? settings.maxVotesPerUser ?? 3))
+  );
 
   useEffect(() => {
     const rawUrl = imageUrl.trim();
@@ -116,6 +120,10 @@ export default function AdminDashboard({
     const timer = window.setTimeout(() => setUploadStatus("idle"), 2200);
     return () => window.clearTimeout(timer);
   }, [uploadStatus]);
+
+  useEffect(() => {
+    setMaxVotesInput(String(Number(settings.maxVotes ?? settings.maxVotesPerUser ?? 3)));
+  }, [settings.maxVotes, settings.maxVotesPerUser]);
 
   const leaderboard = useMemo(
     () =>
@@ -226,6 +234,14 @@ export default function AdminDashboard({
     : settings.showResults
       ? "visible"
       : "hidden";
+  const normalizedMaxVotesInput = maxVotesInput.trim();
+  const hasNumericVoteLimit = /^\d+$/.test(normalizedMaxVotesInput);
+  const parsedMaxVotes = hasNumericVoteLimit ? Number(normalizedMaxVotesInput) : NaN;
+  const currentMaxVotes = Number(settings.maxVotes ?? settings.maxVotesPerUser ?? 3);
+  const voteLimitChanged = hasNumericVoteLimit && parsedMaxVotes !== currentMaxVotes;
+  const voteLimitError = normalizedMaxVotesInput && !hasNumericVoteLimit
+    ? "Use a whole number (0 or more)."
+    : "";
   const outlineActionButtonClass = "btn-ghost w-full";
   const accentActionButtonClass = "btn-accent";
   const dangerActionButtonClass =
@@ -236,6 +252,16 @@ export default function AdminDashboard({
     "btn-ghost btn-sm border-success/35 bg-success/10 text-emerald-100 hover:border-success/55 hover:bg-success/15";
   const inputClassName =
     "w-full rounded-xl border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white placeholder:text-slate-500 transition-colors duration-200 focus:border-accent/40 focus:outline-none";
+
+  const submitVoteLimit = async (event) => {
+    event.preventDefault();
+
+    if (!onUpdateVoteLimit || !hasNumericVoteLimit) {
+      return;
+    }
+
+    await onUpdateVoteLimit(parsedMaxVotes);
+  };
 
   if (loading) {
     return <AdminDashboardSkeleton />;
@@ -550,6 +576,49 @@ export default function AdminDashboard({
               )}
               Reset All Votes
             </button>
+          </div>
+
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Vote Limit</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Set maximum votes per user (stored in <span className="font-mono">settings/global</span>).
+            </p>
+            <form
+              onSubmit={submitVoteLimit}
+              className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+            >
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-wider text-slate-400">
+                  Max Votes
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={maxVotesInput}
+                  onChange={(event) => setMaxVotesInput(event.target.value)}
+                  className={inputClassName}
+                  placeholder="3"
+                />
+                {voteLimitError ? (
+                  <p className="mt-1 text-xs font-semibold text-danger">{voteLimitError}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">Current value: {currentMaxVotes}</p>
+                )}
+              </label>
+              <button
+                type="submit"
+                disabled={isBusy("updateVoteLimit") || !hasNumericVoteLimit || !voteLimitChanged}
+                className="btn-accent w-full sm:w-auto"
+              >
+                {isBusy("updateVoteLimit") ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Vote className="h-4 w-4" />
+                )}
+                Save Limit
+              </button>
+            </form>
           </div>
 
           <div className="mt-5 border-t border-white/10 pt-4">

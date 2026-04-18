@@ -45,6 +45,8 @@ export default function AdminPage() {
         return "Design added successfully.";
       case "toggleResults":
         return "Results visibility updated.";
+      case "updateVoteLimit":
+        return "Vote limit updated.";
       case "resetAllVotes":
         return "All votes have been reset.";
       case "reopenVoting":
@@ -140,6 +142,14 @@ export default function AdminPage() {
       });
     }, "Voting reopened. All votes unlocked for editing.");
 
+  const handleUpdateVoteLimit = async (maxVotes) =>
+    withAction("updateVoteLimit", async () => {
+      await updateSettings({
+        maxVotesPerUser: maxVotes,
+        maxVotes
+      });
+    }, `Vote limit set to ${maxVotes}.`);
+
   const handleDeleteDesign = async (design) => {
     if (!design?.id || deletingDesignId) {
       return false;
@@ -225,7 +235,7 @@ export default function AdminPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Admin Control Room</p>
             <h1 className="mt-1 inline-flex items-center gap-2 text-3xl font-bold text-white sm:text-4xl">
               <Shield className="h-6 w-6 text-accent" />
-              Cover Design Voting Dashboard
+              Votex Dashboard
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-400">
               Manage submissions, rounds, and result visibility with secure controls.
@@ -287,6 +297,7 @@ export default function AdminPage() {
         onRetryUsers={refreshUsers}
         onUploadDesign={handleUploadDesign}
         onToggleResults={handleToggleResults}
+        onUpdateVoteLimit={handleUpdateVoteLimit}
         onResetAllVotes={handleResetAllVotes}
         onReopenVoting={handleReopenVoting}
         onDeleteDesign={handleDeleteDesign}

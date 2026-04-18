@@ -8,6 +8,7 @@ import { useSettings } from "./contexts/SettingsContext";
 import GalleryPage from "./pages/GalleryPage";
 import AdminPage from "./pages/AdminPage";
 import AdminRoute from "./routes/AdminRoute";
+import Footer from "./components/Footer";
 
 function FullPageLoader() {
   return (
@@ -81,6 +82,7 @@ export default function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <Footer />
         </div>
       </main>
     </div>

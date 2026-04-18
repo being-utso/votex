@@ -19,6 +19,7 @@ export const SETTINGS_DOC_ID = "global";
 
 export const DEFAULT_SETTINGS = {
   currentRound: 1,
+  maxVotes: 3,
   maxVotesPerUser: 3,
   votingOpen: false,
   showResults: false,

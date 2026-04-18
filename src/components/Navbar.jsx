@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings } from "../contexts/SettingsContext";
 import { getRoundKey } from "../lib/formatters";
+import logo from "../img/logo.png";
 
 const navLinkClass = ({ isActive }) =>
   clsx(
@@ -18,7 +19,11 @@ export default function Navbar() {
   const { settings } = useSettings();
   const roundKey = getRoundKey(settings.currentRound);
   const usedVotes = Number(profile?.votesUsedByRound?.[roundKey] || 0);
-  const maxVotes = Number(settings.maxVotesPerUser || 0);
+  const maxVotesFromFirestore = Number(settings.maxVotes ?? settings.maxVotesPerUser ?? 3);
+  const maxVotes =
+    Number.isFinite(maxVotesFromFirestore) && maxVotesFromFirestore >= 0
+      ? Math.floor(maxVotesFromFirestore)
+      : 3;
   const remainingVotes = maxVotes > 0 ? Math.max(maxVotes - usedVotes, 0) : "Unlimited";
   const userName = (profile?.name || profile?.displayName || "User").split(" ")[0];
   const userDisplayName = userName.length > 12 ? `${userName.slice(0, 12)}...` : userName;
@@ -28,12 +33,12 @@ export default function Navbar() {
       <div className="app-container">
         <div className="grid h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="rounded-xl border border-accent/30 bg-accent/10 p-2 text-accent">
-              <Vote className="h-4 w-4" />
+            <div className="rounded-xl border border-accent/30 bg-accent/10 p-2">
+              <img src={logo} alt="logo" className="h-7 w-auto" />
             </div>
             <div className="min-w-0">
               <p className="truncate font-display text-base font-semibold tracking-tight text-white">
-                Cover Design Voting
+                Votex
               </p>
             </div>
             <div className="hidden rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs text-slate-300 sm:inline-flex">
@@ -58,10 +63,10 @@ export default function Navbar() {
             <div className="hidden rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-slate-300 lg:block">
               {maxVotes > 0 ? (
                 <>
-                  Votes: <span className="font-semibold text-white">{remainingVotes}</span> / {maxVotes}
+                  Votes left: <span className="font-semibold text-white">{remainingVotes}</span> / {maxVotes}
                 </>
               ) : (
-                "Votes: Unlimited"
+                "Votes left: Unlimited"
               )}
             </div>
 

@@ -54,7 +54,11 @@ export default function GalleryPage() {
   const baseVotedDesignIds = Array.isArray(profile?.votedDesignIdsByRound?.[roundKey])
     ? profile.votedDesignIdsByRound[roundKey]
     : [];
-  const maxVotes = Number(settings.maxVotesPerUser || 0);
+  const maxVotesFromFirestore = Number(settings.maxVotes ?? settings.maxVotesPerUser ?? 3);
+  const maxVotes =
+    Number.isFinite(maxVotesFromFirestore) && maxVotesFromFirestore >= 0
+      ? Math.floor(maxVotesFromFirestore)
+      : 3;
   const baseUsedVotes = Number(profile?.votesUsedByRound?.[roundKey] || 0);
   const hasOptimisticRound = optimisticVoteState?.roundKey === roundKey;
   const votedDesignIds = hasOptimisticRound
@@ -210,7 +214,7 @@ export default function GalleryPage() {
         designId: design.id,
         roundNumber: settings.currentRound,
         roundKey,
-        maxVotesPerUser: settings.maxVotesPerUser
+        maxVotes
       });
 
       setOptimisticVoteState({
@@ -279,7 +283,7 @@ export default function GalleryPage() {
         user: profile,
         roundNumber: settings.currentRound,
         roundKey,
-        maxVotesPerUser: settings.maxVotesPerUser
+        maxVotes
       });
 
       setOptimisticVoteState({
@@ -347,10 +351,10 @@ export default function GalleryPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Round {settings.currentRound}</p>
             <h1 className="mt-1 inline-flex items-center gap-2 text-3xl font-bold text-white sm:text-4xl">
               <ImageIcon className="h-6 w-6 text-accent sm:h-7 sm:w-7" />
-              <span>Cover Design Gallery</span>
+              <span>Cover Design Selection</span>
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
-              Select designs freely, then submit once to finalize your votes.
+              Select the design you like most, then click on submit after finalizing your vote.
             </p>
           </div>
 
@@ -363,10 +367,12 @@ export default function GalleryPage() {
               </p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-300">
-              <p className="mb-0.5 text-[11px] uppercase tracking-wider text-slate-500">Votes Remaining</p>
+              <p className="mb-0.5 text-[11px] uppercase tracking-wider text-slate-500">Votes left</p>
               <p className="inline-flex items-center gap-1 text-sm font-semibold text-white">
                 <Vote className="h-4 w-4 text-accent" />
-                {Number.isFinite(remainingVotes) ? `${remainingVotes} / ${maxVotes}` : "Unlimited"}
+                {Number.isFinite(remainingVotes)
+                  ? `Votes left: ${remainingVotes} / ${maxVotes}`
+                  : "Votes left: Unlimited"}
               </p>
             </div>
           </div>

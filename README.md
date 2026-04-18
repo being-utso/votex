@@ -1,4 +1,4 @@
-# Cover Design Voting (React + Firebase)
+# Votex (React + Firebase)
 
 Premium dark-themed web app for private cover-design voting with approval-gated access, limited votes per round, comment threads, fullscreen zoom/pan review, and an admin control room.
 
