@@ -56,9 +56,6 @@ export default function App() {
   }
 
   const approvalPending = profile?.isApproved !== true;
-  if (approvalPending) {
-    return <ApprovalPendingScreen onSignOut={logout} />;
-  }
 
   return (
     <div className="app-shell">

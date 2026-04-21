@@ -95,6 +95,10 @@ export default function ProfileSetupScreen({
           Signed in as <span className="font-semibold text-white">{email}</span>
         </p>
 
+        <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-300">
+          For guests: use Dept = Guest, Section = G, Roll = 00-00-000. Guests can explore the App but cannot vote.
+        </div>
+
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="sm:col-span-2">
             <span className="mb-1 block text-xs uppercase tracking-wider text-slate-400">Name</span>

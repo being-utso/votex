@@ -155,12 +155,19 @@ export default function GalleryPage() {
       ? "submitted"
       : "idle";
   const submitButtonDisabled =
-    isRoundSubmitted || !settings.votingOpen || submittingVotes || Boolean(activeVoteId);
+    profile?.isApproved !== true ||
+    profile?.roll === "00-00-000" ||
+    isRoundSubmitted ||
+    !settings.votingOpen ||
+    submittingVotes ||
+    Boolean(activeVoteId);
 
   const canToggleVote = (hasVoted) =>
-    !disableAllVoteButtons
-    && !activeVoteId
-    && (hasVoted || remainingVotes > 0);
+    profile?.isApproved === true &&
+    profile?.roll !== "00-00-000" &&
+    !disableAllVoteButtons &&
+    !activeVoteId &&
+    (hasVoted || remainingVotes > 0);
 
   const createVoteHandler = (design) => async () => {
     if (!profile) {
@@ -262,6 +269,14 @@ export default function GalleryPage() {
       setNotice({
         type: "error",
         message: "Selected votes exceed the allowed limit."
+      });
+      return;
+    }
+
+    if (profile?.isApproved !== true || profile?.roll === "00-00-000") {
+      setNotice({
+        type: "error",
+        message: "You are not allowed to submit votes."
       });
       return;
     }
@@ -419,6 +434,18 @@ export default function GalleryPage() {
             After submission, vote selections are locked for this round.
           </p>
         </div>
+
+        {profile?.roll === "00-00-000" ? (
+          <p className="text-yellow-400 text-sm mt-2">
+            Guest mode. Voting is disabled.
+          </p>
+        ) : profile?.isApproved !== true ? (
+          <p className="text-yellow-400 text-sm mt-2">
+            Waiting for admin approval. Voting is disabled.
+          </p>
+        ) : null}
+                                                
+
       </motion.section>
 
       {notice ? (

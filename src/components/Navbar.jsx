@@ -31,7 +31,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/60 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/45">
       <div className="app-container">
-        <div className="grid h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
+        <div className="grid h-16 grid-cols-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 sm:gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <div className="rounded-xl border border-accent/30 bg-accent/10 p-2">
               <img src={logo} alt="logo" className="h-7 w-auto" />
@@ -59,7 +59,7 @@ export default function Navbar() {
             </nav>
           </div>
 
-          <div className="flex items-center justify-end gap-2 sm:gap-2.5">
+          <div className="flex items-center justify-end gap-1 sm:gap-2 flex-wrap md:flex-nowrap">
             <div className="hidden rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-slate-300 lg:block">
               {maxVotes > 0 ? (
                 <>
@@ -70,7 +70,9 @@ export default function Navbar() {
               )}
             </div>
 
-            <div className="hidden items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 md:flex">
+            <div className="flex items-center gap-1.5 md:gap-2 overflow-hidden">
+            
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1">
               {profile?.photoURL ? (
                 <img
                   src={profile.photoURL}
@@ -80,20 +82,53 @@ export default function Navbar() {
               ) : (
                 <div className="h-7 w-7 rounded-full bg-accent/20" />
               )}
-              <p className="max-w-[7.5rem] truncate text-sm font-medium text-white">{userDisplayName}</p>
+              <div className="flex items-center gap-2">
+                <p className="max-w-[6rem] md:max-w-[7.5rem] truncate text-xs md:text-sm font-medium text-white shrink">
+                  {userDisplayName}
+                </p>
+
+                {profile?.roll === "00-00-000" && (
+                  <span className="shrink-0 text-[9px] md:text-[10px] px-1.5 md:px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300">
+                    Guest
+                  </span>
+                )}
+
+                {profile?.isApproved === true && profile?.roll !== "00-00-000" && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-green-500/20 text-green-300">
+                    Approved
+                  </span>
+                )}
+
+                {profile?.isApproved !== true && profile?.roll !== "00-00-000" && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-300">
+                    Pending
+                  </span>
+                )}
+              </div>
               {isAdmin ? <Shield className="h-3.5 w-3.5 text-accent" /> : null}
             </div>
 
             <button
               type="button"
               onClick={logout}
-              className="btn-ghost btn-sm"
+              className="btn-ghost btn-sm px-2"
             >
               <LogOut className="h-4 w-4" />
-              <span className="hidden lg:inline">Sign out</span>
+              <span className="hidden md:inline">Sign out</span>
             </button>
+              
+            </div>
           </div>
         </div>
+        {profile && (
+          <div className="mt-1 mb-1 text-center text-xs text-yellow-300 opacity-80">
+            {profile?.roll === "00-00-000"
+              ? "Guest mode. Voting is disabled."
+              : profile?.isApproved !== true
+              ? "Waiting for admin approval. Voting is disabled."
+              : null}
+          </div>
+        )}
       </div>
 
       <div className="border-t border-white/10 md:hidden">
@@ -110,6 +145,9 @@ export default function Navbar() {
           </nav>
         </div>
       </div>
+      
     </header>
   );
 }
+
+

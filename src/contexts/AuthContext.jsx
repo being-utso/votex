@@ -278,6 +278,7 @@ export function AuthProvider({ children }) {
             roll: normalizedRoll,
             section: normalizedSection,
             dept: normalizedDept,
+            isGuest: normalizedRoll === "00-00-000",
             uid: userId,
             email: normalizedEmail,
             displayName: normalizedName,
@@ -290,16 +291,35 @@ export function AuthProvider({ children }) {
             submittedAtByRound: {},
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-            lastLoginAt: serverTimestamp()
+            lastLoginAt: serverTimestamp(),
           },
           { merge: true }
         );
+
+        
+        setNeedsProfileSetup(false);
+
+          setProfile({
+            uid: userId,
+            email: normalizedEmail,
+            displayName: normalizedName,
+            name: normalizedName,
+            roll: normalizedRoll,
+            section: normalizedSection,
+            dept: normalizedDept,
+            isGuest: normalizedRoll === "00-00-000",
+            isApproved: false,
+            role: emailIsAdmin ? "admin" : "user",
+            photoURL: firebaseUser.photoURL ?? ""
+          });
+          
       } catch (error) {
         setProfileSubmitError(error.message ?? "Failed to save profile.");
         throw error;
       } finally {
         setProfileSubmitLoading(false);
       }
+
     },
     [firebaseUser, settings.adminEmails, findDuplicateUserByEmail]
   );
