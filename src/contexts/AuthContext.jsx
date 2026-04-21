@@ -27,6 +27,18 @@ import { useSettings } from "./SettingsContext";
 const AuthContext = createContext(null);
 const rollRegex = /^\d{2}-\d{2}-\d{3}$/;
 
+const pickUserName = (firebaseAuthUser, userData) => {
+  const rawName =
+    userData?.name
+    || userData?.displayName
+    || firebaseAuthUser?.displayName
+    || firebaseAuthUser?.email
+    || "Anonymous Reviewer";
+
+  const normalizedName = typeof rawName === "string" ? rawName.trim() : "";
+  return normalizedName || "Anonymous Reviewer";
+};
+
 export function AuthProvider({ children }) {
   const { settings, loading: settingsLoading } = useSettings();
   const [firebaseUser, setFirebaseUser] = useState(null);
@@ -36,61 +48,18 @@ export function AuthProvider({ children }) {
   const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
   const [profileSubmitLoading, setProfileSubmitLoading] = useState(false);
   const [profileSubmitError, setProfileSubmitError] = useState(null);
-  const getDocIfReadable = useCallback(async (ref) => {
-    try {
-      return await getDoc(ref);
-    } catch (error) {
-      if (error?.code === "permission-denied") {
-        return null;
-      }
-      throw error;
-    }
-  }, []);
 
-  const findUsersByEmail = useCallback(async (emailValue) => {
-    const trimmedEmail = emailValue?.trim() ?? "";
-    const normalizedEmail = trimmedEmail.toLowerCase();
-    if (!normalizedEmail) {
-      return [];
-    }
-
-    const usersRef = collection(db, COLLECTIONS.USERS);
-    const lookupValues = [normalizedEmail];
-    if (trimmedEmail && trimmedEmail !== normalizedEmail) {
-      lookupValues.push(trimmedEmail);
-    }
-
-    const userDocById = new Map();
-    for (const lookupValue of lookupValues) {
-      try {
-        const snapshot = await getDocs(
-          query(usersRef, where("email", "==", lookupValue), limit(2))
-        );
-        snapshot.docs.forEach((userDoc) => {
-          userDocById.set(userDoc.id, userDoc);
-        });
-      } catch (error) {
-        if (error?.code !== "permission-denied") {
-          throw error;
-        }
-      }
-    }
-
-    return Array.from(userDocById.values());
-  }, []);
-
-  const findDuplicateUserByEmail = useCallback(async (emailValue, excludedDocIds = []) => {
-    const emailUsers = await findUsersByEmail(emailValue);
-    const excludedIds = new Set(excludedDocIds.filter(Boolean));
-    return emailUsers.find((userDoc) => !excludedIds.has(userDoc.id)) ?? null;
-  }, [findUsersByEmail]);
+  const adminEmails = useMemo(
+    () => normalizeEmails(settings.adminEmails),
+    [settings.adminEmails]
+  );
 
   useEffect(() => {
     if (settingsLoading) {
       return undefined;
     }
 
-    const adminEmails = normalizeEmails(settings.adminEmails);
+    let isActive = true;
     let profileUnsubscribe = null;
 
     const stopProfileListener = () => {
@@ -101,94 +70,87 @@ export function AuthProvider({ children }) {
     };
 
     setLoading(true);
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (nextFirebaseUser) => {
       stopProfileListener();
 
-      if (!user) {
-        setFirebaseUser(null);
+      if (!isActive) {
+        return;
+      }
+
+      setAuthError(null);
+      setProfileSubmitError(null);
+      setFirebaseUser(nextFirebaseUser);
+
+      if (!nextFirebaseUser) {
         setProfile(null);
         setNeedsProfileSetup(false);
-        setProfileSubmitError(null);
         setLoading(false);
         return;
       }
 
-      const normalizedEmail = getUserDocIdFromEmail(user.email);
+      const normalizedEmail = getUserDocIdFromEmail(nextFirebaseUser.email);
       if (!normalizedEmail) {
         setAuthError("This Google account does not have a usable email.");
-        await signOut(auth);
-        setLoading(false);
+        try {
+          await signOut(auth);
+        } catch {
+          // Ignore sign-out failures here, we already surface the auth error.
+        }
+        if (isActive) {
+          setProfile(null);
+          setNeedsProfileSetup(false);
+          setLoading(false);
+        }
         return;
       }
 
+      const userRef = doc(db, COLLECTIONS.USERS, normalizedEmail);
+
       try {
-        setAuthError(null);
-        setProfileSubmitError(null);
-        setFirebaseUser(user);
+        const userSnapshot = await getDoc(userRef);
 
-        const userDocId = normalizedEmail;
-        const userRef = doc(db, COLLECTIONS.USERS, userDocId);
-        const legacyUidRef = doc(db, COLLECTIONS.USERS, user.uid);
-        const emailIsAdmin = adminEmails.includes(normalizedEmail);
-
-        const userDocByEmail = await getDocIfReadable(userRef);
-        const emailUsers = [];
-        if (userDocByEmail?.exists()) {
-          emailUsers.push(userDocByEmail);
+        if (!isActive) {
+          return;
         }
 
-        if (!emailUsers.length) {
-          const foundUsers = await findUsersByEmail(normalizedEmail);
-          emailUsers.push(...foundUsers);
-        }
-
-        if (!emailUsers.length) {
-          const legacyUidSnapshot = await getDocIfReadable(legacyUidRef);
-          if (legacyUidSnapshot?.exists()) {
-            emailUsers.push(legacyUidSnapshot);
-          }
-        }
-
-        const matchedUserDoc =
-          emailUsers.find((userDoc) => userDoc.id === userDocId)
-          ?? emailUsers.find((userDoc) => userDoc.id === user.uid)
-          ?? emailUsers[0]
-          ?? null;
-
-        if (!matchedUserDoc) {
-          setNeedsProfileSetup(true);
+        if (!userSnapshot.exists()) {
           setProfile(null);
+          setNeedsProfileSetup(true);
           setLoading(false);
           return;
         }
 
-        const matchedUserData = matchedUserDoc.data();
-        const currentRole = matchedUserData.role ?? "user";
-        const nextRole = currentRole === "admin" || emailIsAdmin ? "admin" : "user";
+        const userData = userSnapshot.data() ?? {};
+        const roleFromDoc = userData.role === "admin" ? "admin" : "user";
+        const nextRole = adminEmails.includes(normalizedEmail) ? "admin" : roleFromDoc;
+        const resolvedName = pickUserName(nextFirebaseUser, userData);
 
         await setDoc(
           userRef,
           {
-            ...matchedUserData,
-            email: normalizedEmail || matchedUserData.email || "",
-            uid: user.uid,
-            displayName:
-              matchedUserData.displayName
-              ?? matchedUserData.name
-              ?? user.displayName
-              ?? "Anonymous Reviewer",
-            photoURL: user.photoURL ?? matchedUserData.photoURL ?? "",
+            uid: nextFirebaseUser.uid,
+            email: normalizedEmail,
+            displayName: resolvedName,
+            photoURL: nextFirebaseUser.photoURL || userData.photoURL || "",
             role: nextRole,
-            ...(matchedUserData.createdAt ? {} : { createdAt: serverTimestamp() }),
+            ...(userData.createdAt ? {} : { createdAt: serverTimestamp() }),
             updatedAt: serverTimestamp(),
             lastLoginAt: serverTimestamp()
           },
           { merge: true }
         );
 
+        if (!isActive) {
+          return;
+        }
+
         profileUnsubscribe = onSnapshot(
           userRef,
           (snapshot) => {
+            if (!isActive) {
+              return;
+            }
+
             if (!snapshot.exists()) {
               setProfile(null);
               setNeedsProfileSetup(true);
@@ -196,53 +158,74 @@ export function AuthProvider({ children }) {
               return;
             }
 
-            const profileData = snapshot.data();
-            const resolvedName =
-              profileData.name
-              ?? profileData.displayName
-              ?? user.displayName
-              ?? "Anonymous Reviewer";
-            setNeedsProfileSetup(false);
+            const profileData = snapshot.data() ?? {};
+            const profileEmail = getUserDocIdFromEmail(profileData.email, normalizedEmail);
+            const resolvedNameFromProfile = pickUserName(nextFirebaseUser, profileData);
+            const resolvedRole =
+              profileData.role === "admin" || adminEmails.includes(profileEmail)
+                ? "admin"
+                : "user";
+
             setProfile({
-              uid: user.uid,
-              email: profileData.email ?? normalizedEmail,
-              displayName: resolvedName,
-              photoURL: user.photoURL ?? profileData.photoURL ?? "",
               ...profileData,
-              name: profileData.name ?? resolvedName
+              uid: nextFirebaseUser.uid,
+              email: profileEmail,
+              displayName: resolvedNameFromProfile,
+              name: profileData.name || resolvedNameFromProfile,
+              photoURL: nextFirebaseUser.photoURL || profileData.photoURL || "",
+              role: resolvedRole,
+              votesUsedByRound: profileData.votesUsedByRound ?? {},
+              votedDesignIdsByRound: profileData.votedDesignIdsByRound ?? {},
+              submittedRounds: profileData.submittedRounds ?? {},
+              submittedAtByRound: profileData.submittedAtByRound ?? {}
             });
+            setNeedsProfileSetup(false);
             setLoading(false);
           },
           (profileError) => {
+            if (!isActive) {
+              return;
+            }
             setAuthError(profileError.message ?? "Failed to load profile.");
+            setProfile(null);
             setLoading(false);
           }
         );
       } catch (error) {
+        if (!isActive) {
+          return;
+        }
         setAuthError(error.message ?? "Authentication failed.");
+        setProfile(null);
         setLoading(false);
       }
     });
 
     return () => {
+      isActive = false;
       stopProfileListener();
       unsubscribeAuth();
     };
-  }, [settingsLoading, settings.adminEmails, findUsersByEmail, getDocIfReadable]);
+  }, [settingsLoading, adminEmails]);
 
   const submitProfile = useCallback(
     async ({ name, roll, section, dept }) => {
-      const userId = firebaseUser?.uid;
-      const email = firebaseUser?.email ?? "";
+      const userUid = firebaseUser?.uid;
+      const email = firebaseUser?.email;
 
-      if (!userId || !email) {
+      if (!userUid || !email) {
         throw new Error("You must be signed in.");
       }
 
-      const normalizedName = name?.trim();
-      const normalizedRoll = roll?.trim();
-      const normalizedSection = section?.trim();
-      const normalizedDept = dept?.trim();
+      const normalizedEmail = getUserDocIdFromEmail(email);
+      if (!normalizedEmail) {
+        throw new Error("A valid email is required.");
+      }
+
+      const normalizedName = name?.trim() ?? "";
+      const normalizedRoll = roll?.trim() ?? "";
+      const normalizedSection = section?.trim() ?? "";
+      const normalizedDept = dept?.trim() ?? "";
 
       if (!normalizedName || !normalizedRoll || !normalizedSection || !normalizedDept) {
         throw new Error("All profile fields are required.");
@@ -256,72 +239,90 @@ export function AuthProvider({ children }) {
       setProfileSubmitLoading(true);
 
       try {
-        const normalizedEmail = getUserDocIdFromEmail(email);
-        if (!normalizedEmail) {
-          throw new Error("A valid email is required.");
-        }
-        const userDocId = normalizedEmail;
-        const duplicateEmailDoc = await findDuplicateUserByEmail(normalizedEmail, [
-          userDocId,
-          userId
-        ]);
-        if (duplicateEmailDoc) {
+        const userRef = doc(db, COLLECTIONS.USERS, normalizedEmail);
+        const existingSnapshot = await getDoc(userRef);
+        const existingData = existingSnapshot.exists() ? existingSnapshot.data() ?? {} : {};
+
+        if (existingSnapshot.exists() && existingData.uid && existingData.uid !== userUid) {
           throw new Error("This email is already registered.");
         }
 
-        const emailIsAdmin = normalizeEmails(settings.adminEmails).includes(normalizedEmail);
+        try {
+          const duplicateSnapshot = await getDocs(
+            query(
+              collection(db, COLLECTIONS.USERS),
+              where("email", "==", normalizedEmail),
+              limit(5)
+            )
+          );
+          const duplicateUserDoc = duplicateSnapshot.docs.find(
+            (snapshot) => snapshot.id !== normalizedEmail
+          );
+          if (duplicateUserDoc) {
+            throw new Error("This email is already registered.");
+          }
+        } catch (error) {
+          if (error?.code !== "permission-denied") {
+            throw error;
+          }
+        }
+
+        const roleFromDoc = existingData.role === "admin" ? "admin" : "user";
+        const nextRole = adminEmails.includes(normalizedEmail) ? "admin" : roleFromDoc;
+        const shouldKeepApproved = existingData.isApproved === true;
 
         await setDoc(
-          doc(db, COLLECTIONS.USERS, userDocId),
+          userRef,
           {
             name: normalizedName,
             roll: normalizedRoll,
             section: normalizedSection,
             dept: normalizedDept,
             isGuest: normalizedRoll === "00-00-000",
-            uid: userId,
+            uid: userUid,
             email: normalizedEmail,
             displayName: normalizedName,
-            photoURL: firebaseUser.photoURL ?? "",
-            role: emailIsAdmin ? "admin" : "user",
-            isApproved: false,
-            votesUsedByRound: {},
-            votedDesignIdsByRound: {},
-            submittedRounds: {},
-            submittedAtByRound: {},
-            createdAt: serverTimestamp(),
+            photoURL: firebaseUser?.photoURL || "",
+            role: nextRole,
+            isApproved: shouldKeepApproved ? true : false,
+            votesUsedByRound: existingData.votesUsedByRound ?? {},
+            votedDesignIdsByRound: existingData.votedDesignIdsByRound ?? {},
+            submittedRounds: existingData.submittedRounds ?? {},
+            submittedAtByRound: existingData.submittedAtByRound ?? {},
+            ...(existingData.createdAt ? {} : { createdAt: serverTimestamp() }),
             updatedAt: serverTimestamp(),
-            lastLoginAt: serverTimestamp(),
+            lastLoginAt: serverTimestamp()
           },
           { merge: true }
         );
 
-        
         setNeedsProfileSetup(false);
-
-          setProfile({
-            uid: userId,
-            email: normalizedEmail,
-            displayName: normalizedName,
-            name: normalizedName,
-            roll: normalizedRoll,
-            section: normalizedSection,
-            dept: normalizedDept,
-            isGuest: normalizedRoll === "00-00-000",
-            isApproved: false,
-            role: emailIsAdmin ? "admin" : "user",
-            photoURL: firebaseUser.photoURL ?? ""
-          });
-          
+        setProfile({
+          ...existingData,
+          uid: userUid,
+          email: normalizedEmail,
+          displayName: normalizedName,
+          name: normalizedName,
+          roll: normalizedRoll,
+          section: normalizedSection,
+          dept: normalizedDept,
+          isGuest: normalizedRoll === "00-00-000",
+          isApproved: shouldKeepApproved ? true : false,
+          role: nextRole,
+          photoURL: firebaseUser?.photoURL || "",
+          votesUsedByRound: existingData.votesUsedByRound ?? {},
+          votedDesignIdsByRound: existingData.votedDesignIdsByRound ?? {},
+          submittedRounds: existingData.submittedRounds ?? {},
+          submittedAtByRound: existingData.submittedAtByRound ?? {}
+        });
       } catch (error) {
         setProfileSubmitError(error.message ?? "Failed to save profile.");
         throw error;
       } finally {
         setProfileSubmitLoading(false);
       }
-
     },
-    [firebaseUser, settings.adminEmails, findDuplicateUserByEmail]
+    [firebaseUser, adminEmails]
   );
 
   const signInWithGoogle = useCallback(async () => {
@@ -333,9 +334,8 @@ export function AuthProvider({ children }) {
     await signOut(auth);
   }, []);
 
-  const isAdmin =
-    profile?.role === "admin" ||
-    normalizeEmails(settings.adminEmails).includes(firebaseUser?.email?.toLowerCase() ?? "");
+  const adminEmail = getUserDocIdFromEmail(profile?.email ?? firebaseUser?.email ?? "");
+  const isAdmin = profile?.role === "admin" || adminEmails.includes(adminEmail);
 
   const value = useMemo(
     () => ({

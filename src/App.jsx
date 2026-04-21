@@ -55,7 +55,14 @@ export default function App() {
     );
   }
 
-  const approvalPending = profile?.isApproved !== true;
+  if (!profile) {
+    return <FullPageLoader />;
+  }
+
+  const approvalPending = profile.isApproved !== true;
+  if (approvalPending && profile.role !== "admin") {
+    return <ApprovalPendingScreen onSignOut={logout} />;
+  }
 
   return (
     <div className="app-shell">

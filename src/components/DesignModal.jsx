@@ -42,7 +42,7 @@ export default function DesignModal({
     };
 
     const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = "auto";
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
@@ -58,14 +58,14 @@ export default function DesignModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/80 p-0 backdrop-blur-md md:p-4 lg:p-6"
+          className="fixed inset-0 z-50 flex items-stretch justify-center overflow-y-auto bg-black/80 p-0 backdrop-blur-md md:p-4 lg:p-6"
         >
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ duration: 0.24, ease: "easeOut" }}
-            className="glass-panel mx-auto flex h-full w-full max-w-[1400px] flex-col overflow-hidden rounded-none border-white/20 md:rounded-2xl"
+            className="glass-panel mx-auto flex h-full w-full max-w-[1400px] flex-col overflow-y-auto rounded-none border-white/20 md:rounded-2xl"
           >
             <div className="flex items-start justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-5">
               <div className="min-w-0">
@@ -88,7 +88,7 @@ export default function DesignModal({
               </button>
             </div>
 
-            <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,26rem)]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 h-auto lg:h-[80vh]">
               <div className="relative min-h-[44vh] border-b border-white/10 lg:min-h-0 lg:border-b-0">
                 <TransformWrapper
                   minScale={1}

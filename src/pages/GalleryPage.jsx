@@ -56,9 +56,9 @@ export default function GalleryPage() {
     : [];
   const maxVotesFromFirestore = Number(settings.maxVotes ?? settings.maxVotesPerUser ?? 3);
   const maxVotes =
-    Number.isFinite(maxVotesFromFirestore) && maxVotesFromFirestore >= 0
-      ? Math.floor(maxVotesFromFirestore)
-      : 3;
+  Number.isFinite(maxVotesFromFirestore) && maxVotesFromFirestore >= 0
+    ? Math.floor(maxVotesFromFirestore)
+    : 3;
   const baseUsedVotes = Number(profile?.votesUsedByRound?.[roundKey] || 0);
   const hasOptimisticRound = optimisticVoteState?.roundKey === roundKey;
   const votedDesignIds = hasOptimisticRound
@@ -72,7 +72,10 @@ export default function GalleryPage() {
   const isRoundSubmitted =
     isSubmittedFromProfile || optimisticSubmittedRoundKey === roundKey;
   const disableAllVoteButtons =
-    !settings.votingOpen || isRoundSubmitted || submittingVotes || showResults;
+    !settings.votingOpen ||
+    isRoundSubmitted ||
+    submittingVotes ||
+    showResults;
 
   const { countByDesignId: adminCountByDesignId } = useRoundVotes(
     settings.currentRound,
@@ -155,7 +158,7 @@ export default function GalleryPage() {
       ? "submitted"
       : "idle";
   const submitButtonDisabled =
-    profile?.isApproved !== true ||
+    (!isAdmin && profile?.isApproved !== true) ||
     profile?.roll === "00-00-000" ||
     isRoundSubmitted ||
     !settings.votingOpen ||
@@ -273,7 +276,7 @@ export default function GalleryPage() {
       return;
     }
 
-    if (profile?.isApproved !== true || profile?.roll === "00-00-000") {
+    if ((!isAdmin && profile?.isApproved !== true) || profile?.roll === "00-00-000") {
       setNotice({
         type: "error",
         message: "You are not allowed to submit votes."
@@ -386,7 +389,9 @@ export default function GalleryPage() {
               <p className="inline-flex items-center gap-1 text-sm font-semibold text-white">
                 <Vote className="h-4 w-4 text-accent" />
                 {Number.isFinite(remainingVotes)
-                  ? `Votes left: ${remainingVotes} / ${maxVotes}`
+                  ? isAdmin
+                    ? "Votes left: Unlimited"
+                    : `Votes left: ${remainingVotes} / ${maxVotes}`
                   : "Votes left: Unlimited"}
               </p>
             </div>
@@ -564,8 +569,8 @@ export default function GalleryPage() {
                 Are you sure? You won&apos;t be able to change votes.
               </p>
               <p className="mt-2 text-xs text-slate-400">
-                Selected votes: {usedVotes}
-                {maxVotes > 0 ? ` / ${maxVotes}` : ""}
+                Selected votes: {votedDesignIds.length}
+                {Number.isFinite(maxVotes) ? ` / ${maxVotes}` : " / ∞"}
               </p>
               <div className="mt-5 flex gap-2">
                 <button

@@ -102,8 +102,12 @@ export async function toggleVote({
       throw new Error("Voting settings are not configured.");
     }
 
+    
     const settings = settingsSnapshot.data();
-    if (!settings.votingOpen) {
+    const userData = userSnapshot.exists() ? userSnapshot.data() : {};
+    const isAdminUser = userData.role === "admin";
+
+    if (!isAdminUser && !settings.votingOpen) {
       throw new Error("Voting is currently closed.");
     }
 
@@ -112,8 +116,7 @@ export async function toggleVote({
       throw new Error("Round changed. Refresh and vote again.");
     }
 
-    const userData = userSnapshot.exists() ? userSnapshot.data() : {};
-    if (userData.isApproved !== true) {
+    if (!isAdminUser && userData.isApproved !== true) {
       throw new Error("Waiting for approval.");
     }
     const votesUsedByRound = userData.votesUsedByRound ?? {};
@@ -126,7 +129,7 @@ export async function toggleVote({
       : [];
     const isRoundSubmitted = submittedRounds[activeRoundKey] === true;
 
-    if (isRoundSubmitted) {
+    if (!isAdminUser && isRoundSubmitted) {
       throw new Error("Votes already submitted for this round.");
     }
 
@@ -135,7 +138,7 @@ export async function toggleVote({
       throw new Error("Submitted votes cannot be changed.");
     }
 
-    if (!voteExists && voteLimit > 0 && currentUsedVotes >= voteLimit) {
+    if (!isAdminUser && !voteExists && voteLimit > 0 && currentUsedVotes >= voteLimit) {
       throw new Error("You have used all votes for this round.");
     }
 
@@ -214,7 +217,9 @@ export async function submitVotes({
   }
 
   const settings = settingsSnapshot.data();
-  if (!settings.votingOpen) {
+  const userData = userSnapshot.exists() ? userSnapshot.data() : {};
+  const isAdminUser = userData.role === "admin";
+  if (!isAdminUser && !settings.votingOpen) {
     throw new Error("Voting is currently closed.");
   }
 
@@ -222,8 +227,8 @@ export async function submitVotes({
     throw new Error("Round changed. Refresh and submit again.");
   }
 
-  const userData = userSnapshot.exists() ? userSnapshot.data() : {};
-  if (userData.isApproved !== true) {
+  
+  if (!isAdminUser && userData.isApproved !== true) {
     throw new Error("Waiting for approval.");
   }
   const submittedRounds = userData.submittedRounds ?? {};
@@ -260,7 +265,7 @@ export async function submitVotes({
   const usedVotes = votedDesignIds.length;
   const voteLimit = Number(settings.maxVotes ?? settings.maxVotesPerUser ?? maxVotes ?? 3);
 
-  if (voteLimit > 0 && usedVotes > voteLimit) {
+  if (!isAdminUser && voteLimit > 0 && usedVotes > voteLimit) {
     throw new Error("Selected votes exceed the allowed limit.");
   }
 

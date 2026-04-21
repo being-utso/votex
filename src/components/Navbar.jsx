@@ -21,9 +21,9 @@ export default function Navbar() {
   const usedVotes = Number(profile?.votesUsedByRound?.[roundKey] || 0);
   const maxVotesFromFirestore = Number(settings.maxVotes ?? settings.maxVotesPerUser ?? 3);
   const maxVotes =
-    Number.isFinite(maxVotesFromFirestore) && maxVotesFromFirestore >= 0
-      ? Math.floor(maxVotesFromFirestore)
-      : 3;
+  Number.isFinite(maxVotesFromFirestore) && maxVotesFromFirestore >= 0
+    ? Math.floor(maxVotesFromFirestore)
+    : 3;
   const remainingVotes = maxVotes > 0 ? Math.max(maxVotes - usedVotes, 0) : "Unlimited";
   const userName = (profile?.name || profile?.displayName || "User").split(" ")[0];
   const userDisplayName = userName.length > 12 ? `${userName.slice(0, 12)}...` : userName;
@@ -76,7 +76,7 @@ export default function Navbar() {
               {profile?.photoURL ? (
                 <img
                   src={profile.photoURL}
-                  alt={profile.displayName}
+                  alt={profile?.displayName || profile?.name || "User avatar"}
                   className="h-7 w-7 rounded-full border border-white/20 object-cover"
                 />
               ) : (
@@ -149,5 +149,4 @@ export default function Navbar() {
     </header>
   );
 }
-
 
