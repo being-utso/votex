@@ -87,7 +87,7 @@ export default function ProfileSetupScreen({
             <p className="font-display text-lg font-semibold tracking-tight text-white">
               Complete Your Profile
             </p>
-            <p className="text-xs text-textMuted">Required before admin approval</p>
+            <p className="text-xs text-textMuted">Required to start voting</p>
           </div>
         </div>
 

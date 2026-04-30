@@ -1,6 +1,6 @@
 # Votex (React + Firebase)
 
-Premium dark-themed web app for private cover-design voting with approval-gated access, limited votes per round, comment threads, fullscreen zoom/pan review, and an admin control room.
+Premium dark-themed web app for private cover-design voting with role-based access (guests cannot vote), limited votes per round, comment threads, fullscreen zoom/pan review, and an admin control room.
 
 ## Tech Stack
 
@@ -13,7 +13,8 @@ Premium dark-themed web app for private cover-design voting with approval-gated 
 
 ## Features
 
-- Google login with approval-based access (`users.isApproved`)
+- Google login with role-based voting access (guests use `roll: "00-00-000"` and cannot vote)
+- Admin approval (`users.isApproved`) remains for review purposes but does not control voting
 - Responsive design gallery with glassmorphism cards
 - Fullscreen design viewer with zoom/pan
 - Per-design voting with:

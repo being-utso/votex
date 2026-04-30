@@ -72,7 +72,7 @@ export default function AuthScreen({ error }) {
           Vote with confidence.
         </h1>
         <p className="mt-4 text-sm leading-6 text-textMuted">
-          Sign in with Google, complete your profile if needed, and enter once admin approval is granted.
+          Sign in with Google, complete your profile if needed, and start voting right away.
         </p>
 
         <button

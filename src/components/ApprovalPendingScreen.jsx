@@ -19,9 +19,9 @@ export default function ApprovalPendingScreen({ onSignOut }) {
           <Clock3 className="h-6 w-6" />
         </div>
 
-        <h1 className="font-display text-3xl font-bold text-white">Waiting for approval</h1>
+        <h1 className="font-display text-3xl font-bold text-white">Account under review</h1>
         <p className="mt-3 text-sm leading-6 text-textMuted">
-          Your profile was submitted successfully. Access will be enabled after an admin approves your account.
+          Your profile was submitted successfully. An admin may review your account details, but voting is based on role (guests cannot vote).
         </p>
 
         <div className="mt-6 rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2 text-xs text-slate-300">

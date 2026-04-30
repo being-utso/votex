@@ -27,6 +27,10 @@ export default function Navbar() {
   const remainingVotes = maxVotes > 0 ? Math.max(maxVotes - usedVotes, 0) : "Unlimited";
   const userName = (profile?.name || profile?.displayName || "User").split(" ")[0];
   const userDisplayName = userName.length > 12 ? `${userName.slice(0, 12)}...` : userName;
+  const isGuest = profile?.roll === "00-00-000" || profile?.role === "00-00-000";
+  const avatarName = (profile?.name || profile?.displayName || profile?.email || "User").trim();
+  const fallbackAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(avatarName)}&background=0D1B2A&color=fff`;
+  const hasGooglePhoto = profile?.photoURL != null;
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/60 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/45">
@@ -73,21 +77,29 @@ export default function Navbar() {
             <div className="flex items-center gap-1.5 md:gap-2 overflow-hidden">
             
             <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1">
-              {profile?.photoURL ? (
+              {hasGooglePhoto ? (
                 <img
-                  src={profile.photoURL}
+                  src={profile?.photoURL ?? undefined}
+                  alt={profile?.displayName || profile?.name || "User avatar"}
+                  className="h-7 w-7 rounded-full border border-white/20 object-cover"
+                  onError={(event) => {
+                    // Only fall back if the Google URL fails to load.
+                    event.currentTarget.src = fallbackAvatarUrl;
+                  }}
+                />
+              ) : (
+                <img
+                  src={fallbackAvatarUrl}
                   alt={profile?.displayName || profile?.name || "User avatar"}
                   className="h-7 w-7 rounded-full border border-white/20 object-cover"
                 />
-              ) : (
-                <div className="h-7 w-7 rounded-full bg-accent/20" />
               )}
               <div className="flex items-center gap-2">
                 <p className="max-w-[6rem] md:max-w-[7.5rem] truncate text-xs md:text-sm font-medium text-white shrink">
                   {userDisplayName}
                 </p>
 
-                {profile?.roll === "00-00-000" && (
+                {isGuest && (
                   <span className="shrink-0 text-[9px] md:text-[10px] px-1.5 md:px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300">
                     Guest
                   </span>
@@ -122,11 +134,7 @@ export default function Navbar() {
         </div>
         {profile && (
           <div className="mt-1 mb-1 text-center text-xs text-yellow-300 opacity-80">
-            {profile?.roll === "00-00-000"
-              ? "Guest mode. Voting is disabled."
-              : profile?.isApproved !== true
-              ? "Waiting for admin approval. Voting is disabled."
-              : null}
+            {isGuest ? "Guest mode. Voting is disabled." : null}
           </div>
         )}
       </div>

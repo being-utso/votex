@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import AuthScreen from "./components/AuthScreen";
 import ProfileSetupScreen from "./components/ProfileSetupScreen";
-import ApprovalPendingScreen from "./components/ApprovalPendingScreen";
 import { useAuth } from "./contexts/AuthContext";
 import { useSettings } from "./contexts/SettingsContext";
 import GalleryPage from "./pages/GalleryPage";
@@ -57,11 +56,6 @@ export default function App() {
 
   if (!profile) {
     return <FullPageLoader />;
-  }
-
-  const approvalPending = profile.isApproved !== true;
-  if (approvalPending && profile.role !== "admin") {
-    return <ApprovalPendingScreen onSignOut={logout} />;
   }
 
   return (

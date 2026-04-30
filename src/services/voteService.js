@@ -106,6 +106,7 @@ export async function toggleVote({
     const settings = settingsSnapshot.data();
     const userData = userSnapshot.exists() ? userSnapshot.data() : {};
     const isAdminUser = userData.role === "admin";
+    const isGuest = userData?.roll === "00-00-000" || userData?.role === "00-00-000";
 
     if (!isAdminUser && !settings.votingOpen) {
       throw new Error("Voting is currently closed.");
@@ -116,8 +117,8 @@ export async function toggleVote({
       throw new Error("Round changed. Refresh and vote again.");
     }
 
-    if (!isAdminUser && userData.isApproved !== true) {
-      throw new Error("Waiting for approval.");
+    if (isGuest) {
+      throw new Error("Guest mode. Voting is disabled.");
     }
     const votesUsedByRound = userData.votesUsedByRound ?? {};
     const votedDesignIdsByRound = userData.votedDesignIdsByRound ?? {};
@@ -138,7 +139,7 @@ export async function toggleVote({
       throw new Error("Submitted votes cannot be changed.");
     }
 
-    if (!isAdminUser && !voteExists && voteLimit > 0 && currentUsedVotes >= voteLimit) {
+    if (!voteExists && voteLimit > 0 && currentUsedVotes >= voteLimit) {
       throw new Error("You have used all votes for this round.");
     }
 
@@ -219,6 +220,7 @@ export async function submitVotes({
   const settings = settingsSnapshot.data();
   const userData = userSnapshot.exists() ? userSnapshot.data() : {};
   const isAdminUser = userData.role === "admin";
+  const isGuest = userData?.roll === "00-00-000" || userData?.role === "00-00-000";
   if (!isAdminUser && !settings.votingOpen) {
     throw new Error("Voting is currently closed.");
   }
@@ -228,8 +230,8 @@ export async function submitVotes({
   }
 
   
-  if (!isAdminUser && userData.isApproved !== true) {
-    throw new Error("Waiting for approval.");
+  if (isGuest) {
+    throw new Error("Guest mode. Voting is disabled.");
   }
   const submittedRounds = userData.submittedRounds ?? {};
   if (submittedRounds[activeRoundKey] === true) {

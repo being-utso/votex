@@ -76,6 +76,7 @@ export default function GalleryPage() {
     isRoundSubmitted ||
     submittingVotes ||
     showResults;
+  const isGuest = profile?.roll === "00-00-000" || profile?.role === "00-00-000";
 
   const { countByDesignId: adminCountByDesignId } = useRoundVotes(
     settings.currentRound,
@@ -158,16 +159,14 @@ export default function GalleryPage() {
       ? "submitted"
       : "idle";
   const submitButtonDisabled =
-    (!isAdmin && profile?.isApproved !== true) ||
-    profile?.roll === "00-00-000" ||
+    isGuest ||
     isRoundSubmitted ||
     !settings.votingOpen ||
     submittingVotes ||
     Boolean(activeVoteId);
 
   const canToggleVote = (hasVoted) =>
-    profile?.isApproved === true &&
-    profile?.roll !== "00-00-000" &&
+    !isGuest &&
     !disableAllVoteButtons &&
     !activeVoteId &&
     (hasVoted || remainingVotes > 0);
@@ -276,10 +275,10 @@ export default function GalleryPage() {
       return;
     }
 
-    if ((!isAdmin && profile?.isApproved !== true) || profile?.roll === "00-00-000") {
+    if (isGuest) {
       setNotice({
         type: "error",
-        message: "You are not allowed to submit votes."
+        message: "Guest mode. Voting is disabled."
       });
       return;
     }
@@ -440,13 +439,9 @@ export default function GalleryPage() {
           </p>
         </div>
 
-        {profile?.roll === "00-00-000" ? (
+        {isGuest ? (
           <p className="text-yellow-400 text-sm mt-2">
             Guest mode. Voting is disabled.
-          </p>
-        ) : profile?.isApproved !== true ? (
-          <p className="text-yellow-400 text-sm mt-2">
-            Waiting for admin approval. Voting is disabled.
           </p>
         ) : null}
                                                 

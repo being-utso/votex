@@ -39,6 +39,14 @@ const pickUserName = (firebaseAuthUser, userData) => {
   return normalizedName || "Anonymous Reviewer";
 };
 
+const normalizePhotoURL = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
 export function AuthProvider({ children }) {
   const { settings, loading: settingsLoading } = useSettings();
   const [firebaseUser, setFirebaseUser] = useState(null);
@@ -75,6 +83,16 @@ export function AuthProvider({ children }) {
 
       if (!isActive) {
         return;
+      }
+
+      if (import.meta.env.DEV) {
+        // Useful for verifying Google profile image presence.
+        console.debug("[auth] firebaseUser", {
+          uid: nextFirebaseUser?.uid,
+          email: nextFirebaseUser?.email,
+          displayName: nextFirebaseUser?.displayName,
+          photoURL: nextFirebaseUser?.photoURL
+        });
       }
 
       setAuthError(null);
@@ -114,6 +132,29 @@ export function AuthProvider({ children }) {
         }
 
         if (!userSnapshot.exists()) {
+          const nextRole = adminEmails.includes(normalizedEmail) ? "admin" : "user";
+          const resolvedName = pickUserName(nextFirebaseUser, null);
+          const authPhotoURL = normalizePhotoURL(nextFirebaseUser.photoURL);
+
+          await setDoc(userRef, {
+            uid: nextFirebaseUser.uid,
+            email: normalizedEmail,
+            displayName: resolvedName,
+            name: resolvedName,
+            photoURL: authPhotoURL,
+            role: nextRole,
+            // Keep existing admin review system intact, but don't block app usage on it.
+            isApproved: false,
+            approved: false,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastLoginAt: serverTimestamp()
+          });
+
+          if (!isActive) {
+            return;
+          }
+
           setProfile(null);
           setNeedsProfileSetup(true);
           setLoading(false);
@@ -121,9 +162,24 @@ export function AuthProvider({ children }) {
         }
 
         const userData = userSnapshot.data() ?? {};
+        if (userData.uid && userData.uid !== nextFirebaseUser.uid) {
+          setAuthError("This email is already registered with another account.");
+          try {
+            await signOut(auth);
+          } catch {
+            // ignore
+          }
+          setProfile(null);
+          setNeedsProfileSetup(false);
+          setLoading(false);
+          return;
+        }
         const roleFromDoc = userData.role === "admin" ? "admin" : "user";
         const nextRole = adminEmails.includes(normalizedEmail) ? "admin" : roleFromDoc;
         const resolvedName = pickUserName(nextFirebaseUser, userData);
+        const authPhotoURL = normalizePhotoURL(nextFirebaseUser.photoURL);
+        const docPhotoURL = normalizePhotoURL(userData.photoURL);
+        const resolvedPhotoURL = authPhotoURL ?? docPhotoURL;
 
         await setDoc(
           userRef,
@@ -131,8 +187,9 @@ export function AuthProvider({ children }) {
             uid: nextFirebaseUser.uid,
             email: normalizedEmail,
             displayName: resolvedName,
-            photoURL: nextFirebaseUser.photoURL || userData.photoURL || "",
+            ...(resolvedPhotoURL ? { photoURL: resolvedPhotoURL } : {}),
             role: nextRole,
+            approved: userData.approved === true ? true : false,
             ...(userData.createdAt ? {} : { createdAt: serverTimestamp() }),
             updatedAt: serverTimestamp(),
             lastLoginAt: serverTimestamp()
@@ -165,6 +222,8 @@ export function AuthProvider({ children }) {
               profileData.role === "admin" || adminEmails.includes(profileEmail)
                 ? "admin"
                 : "user";
+            const authPhotoURL = normalizePhotoURL(nextFirebaseUser.photoURL);
+            const profilePhotoURL = normalizePhotoURL(profileData.photoURL);
 
             setProfile({
               ...profileData,
@@ -172,7 +231,7 @@ export function AuthProvider({ children }) {
               email: profileEmail,
               displayName: resolvedNameFromProfile,
               name: profileData.name || resolvedNameFromProfile,
-              photoURL: nextFirebaseUser.photoURL || profileData.photoURL || "",
+              photoURL: authPhotoURL ?? profilePhotoURL,
               role: resolvedRole,
               votesUsedByRound: profileData.votesUsedByRound ?? {},
               votedDesignIdsByRound: profileData.votedDesignIdsByRound ?? {},
@@ -270,6 +329,7 @@ export function AuthProvider({ children }) {
         const roleFromDoc = existingData.role === "admin" ? "admin" : "user";
         const nextRole = adminEmails.includes(normalizedEmail) ? "admin" : roleFromDoc;
         const shouldKeepApproved = existingData.isApproved === true;
+        const authPhotoURL = normalizePhotoURL(firebaseUser?.photoURL);
 
         await setDoc(
           userRef,
@@ -282,7 +342,7 @@ export function AuthProvider({ children }) {
             uid: userUid,
             email: normalizedEmail,
             displayName: normalizedName,
-            photoURL: firebaseUser?.photoURL || "",
+            ...(authPhotoURL ? { photoURL: authPhotoURL } : {}),
             role: nextRole,
             isApproved: shouldKeepApproved ? true : false,
             votesUsedByRound: existingData.votesUsedByRound ?? {},
@@ -309,7 +369,7 @@ export function AuthProvider({ children }) {
           isGuest: normalizedRoll === "00-00-000",
           isApproved: shouldKeepApproved ? true : false,
           role: nextRole,
-          photoURL: firebaseUser?.photoURL || "",
+          photoURL: authPhotoURL ?? normalizePhotoURL(existingData.photoURL),
           votesUsedByRound: existingData.votesUsedByRound ?? {},
           votedDesignIdsByRound: existingData.votedDesignIdsByRound ?? {},
           submittedRounds: existingData.submittedRounds ?? {},
