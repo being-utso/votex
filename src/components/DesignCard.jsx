@@ -39,7 +39,7 @@ export default function DesignCard({
         className="relative block overflow-hidden text-left"
         aria-label={`Open ${designTitle}`}
       >
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-950/75">
+        <div className="relative aspect-[9/5] w-full overflow-hidden bg-slate-950/75">
           {!imageLoaded ? (
             <div className="skeleton-shimmer absolute inset-0 animate-pulse bg-white/10" />
           ) : null}
@@ -48,7 +48,7 @@ export default function DesignCard({
             alt={designTitle}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
-            className={`h-full w-full object-contain transition-all duration-300 ease-out group-hover:scale-[1.05] ${
+            className={`h-full w-full object-cover transition-all duration-300 ease-out group-hover:scale-[1.05] ${
               imageLoaded ? "opacity-100" : "opacity-0"
             }`}
           />
