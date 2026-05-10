@@ -22,7 +22,7 @@ export function listenToDesigns(roundNumber, onData, onError) {
   const designsQuery = query(
     collection(db, COLLECTIONS.DESIGNS),
     where("roundId", "==", Number(roundNumber)),
-    orderBy("createdAt", "desc")
+    orderBy("createdAt", "asc")
   );
 
   return onSnapshot(
